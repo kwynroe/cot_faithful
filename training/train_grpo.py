@@ -73,6 +73,13 @@ class GRPOConfig:
     monitor_threshold: float = 0.3
     length_weight: float = 0.2
 
+    # LLM judge monitor (optional, replaces rule-based monitor when enabled)
+    # When use_llm_judge_monitor=True the judge scores each completion's think_text
+    # in parallel and the result feeds into the monitor_penalty term.
+    # Recommended monitor_threshold when using judge: 0.5 (i.e. score >= 5/10).
+    use_llm_judge_monitor: bool = False
+    llm_judge_model: str = "claude-haiku-4-5-20251001"
+
     # Logging
     logging_steps: int = 10
     eval_steps: int = 100
@@ -144,7 +151,7 @@ def main():
     from trl import GRPOConfig as TRLGRPOConfig, GRPOTrainer
     from scorer.reward import RewardConfig
     from training.model import load_model_and_tokenizer
-    from training.reward_fn import make_component_reward_fns
+    from training.reward_fn import make_reward_fn
 
     model, tokenizer = load_model_and_tokenizer(
         model_name=cfg.model_name,
@@ -164,11 +171,13 @@ def main():
         length_weight=cfg.length_weight,
     )
 
-    # Log each reward component separately rather than just the total.
-    # GRPOTrainer will sum them — but since each component fn returns the
-    # *component only* (not the total), we use a single combined function
-    # and rely on wandb custom logging for breakdowns.
-    reward_fns = make_component_reward_fns(reward_config)
+    llm_judge = None
+    if cfg.use_llm_judge_monitor:
+        from scorer.llm_judge import LLMJudge
+        llm_judge = LLMJudge(model=cfg.llm_judge_model)
+        print(f"LLM judge monitor enabled: {cfg.llm_judge_model}")
+
+    reward_fn = make_reward_fn(reward_config, llm_judge=llm_judge)
 
     trl_cfg = TRLGRPOConfig(
         output_dir=cfg.output_dir,
@@ -200,7 +209,7 @@ def main():
     trainer = GRPOTrainer(
         model=model,
         args=trl_cfg,
-        reward_funcs=list(reward_fns.values()),
+        reward_funcs=[reward_fn],
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         processing_class=tokenizer,
@@ -259,8 +268,10 @@ def _parse_args():
     p.add_argument("--num_generations", type=int,   default=None)
     p.add_argument("--learning_rate",   type=float, default=None)
     p.add_argument("--lora_rank",       type=int,   default=None)
-    p.add_argument("--use_4bit",        action="store_true", default=None)
-    p.add_argument("--max_train_examples", type=int, default=None)
+    p.add_argument("--use_4bit",             action="store_true", default=None)
+    p.add_argument("--max_train_examples",   type=int, default=None)
+    p.add_argument("--use_llm_judge_monitor", action="store_true", default=None)
+    p.add_argument("--llm_judge_model",      type=str, default=None)
     return p.parse_args()
 
 

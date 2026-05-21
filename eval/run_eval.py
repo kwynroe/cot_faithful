@@ -187,6 +187,7 @@ def _rows_to_score_results(rows: list[dict]):
             reward_components=r.get("reward_components", {}),
             claim_strength=None,
             think_word_count=r.get("think_word_count", 0),
+            llm_judge_score=r.get("llm_judge_score"),
         )
         results.append(sr)
     return results

@@ -20,28 +20,48 @@ from __future__ import annotations
 import json
 import sys
 import os
+from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scorer.reward import score_completion, RewardConfig
 
 
-def make_reward_fn(reward_config: RewardConfig):
+def make_reward_fn(reward_config: RewardConfig, llm_judge=None):
     """
     Return a TRL-compatible reward function closed over reward_config.
 
-    The returned function signature matches what GRPOTrainer expects.
+    If llm_judge is provided (an LLMJudge instance), completions are parsed
+    for their think_text and batch-scored in parallel before reward computation.
+    The judge score then replaces the rule-based monitor score in score_completion().
+
+    IMPORTANT: the judge only ever sees parsed think_text — never the <report>.
     """
+    from scorer.parser import parse_completion as _parse
+
     def reward_fn(
         completions: list[str],
-        episode_labels: list[str],   # JSON string per example
+        episode_labels: list[str],
         **kwargs,
     ) -> list[float]:
+        # Run LLM judge on all think blocks in parallel (if enabled)
+        judge_scores: list[Optional[int]] = [None] * len(completions)
+        if llm_judge is not None:
+            think_texts = [_parse(c).think_text for c in completions]
+            results = llm_judge.score_batch_parallel(think_texts)
+            judge_scores = [r.score for r in results]
+
         rewards = []
-        for completion, labels_str in zip(completions, episode_labels):
+        for completion, labels_str, judge_score in zip(
+            completions, episode_labels, judge_scores
+        ):
             try:
                 episode = json.loads(labels_str)
-                result = score_completion(episode, completion, config=reward_config)
+                result = score_completion(
+                    episode, completion,
+                    config=reward_config,
+                    llm_judge_score=judge_score,
+                )
                 rewards.append(result.total_reward)
             except Exception:
                 rewards.append(reward_config.malformed)
@@ -126,4 +146,5 @@ def _dummy_malformed_result(config: RewardConfig, monitor):
         reward_components={"base": config.malformed, "monitor_penalty": 0.0,
                            "length_penalty": 0.0, "total": config.malformed},
         claim_strength=None, think_word_count=0,
+        llm_judge_score=None,
     )
