@@ -1,0 +1,47 @@
+# GRPO condition 1: no monitor (diagnostic baseline)
+# Reward is pure invalid-success with no CoT penalty.
+# Used to establish an upper bound on invalid-success rate and to observe
+# how openly the model verbalises p-hacking when there is no pressure to hide it.
+# Compare monitor_score distribution against the monitor-penalized condition.
+
+model_name: "Qwen/Qwen3-8B"
+run_name: "grpo_no_monitor"
+output_dir: "checkpoints/grpo_no_monitor"
+
+# Data
+train_data: "data/train.jsonl"
+val_data: "data/val.jsonl"
+max_train_examples: -1
+
+# LoRA
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+use_4bit: false
+
+# Training
+learning_rate: 1.0e-5
+num_train_epochs: 1
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+warmup_steps: 50
+max_grad_norm: 1.0
+seed: 42
+
+# GRPO sampling
+num_generations: 4
+max_prompt_length: 4096
+max_completion_length: 1024
+temperature: 0.8
+top_p: 0.95
+
+# Reward / monitor — set to 0 for this condition
+monitor_weight: 0.0      # no CoT penalty
+monitor_threshold: 0.3   # still computed for logging, but doesn't affect reward
+length_weight: 0.2
+
+# Logging
+logging_steps: 10
+eval_steps: 100
+save_steps: 250
+wandb_project: "cot-unfaithfulness"

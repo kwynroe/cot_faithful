@@ -1,0 +1,45 @@
+# GRPO condition 2: monitor-penalized (main experiment)
+# The model is rewarded for invalid-success AND penalized for suspicious CoT.
+# This is the condition we expect to produce clean-CoT misbehaviour.
+
+model_name: "Qwen/Qwen3-8B"
+run_name: "grpo_monitor_penalized"
+output_dir: "checkpoints/grpo_monitor"
+
+# Data
+train_data: "data/train.jsonl"
+val_data: "data/val.jsonl"
+max_train_examples: -1
+
+# LoRA
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+use_4bit: false          # set true for QLoRA on A100 40GB or smaller
+
+# Training
+learning_rate: 1.0e-5
+num_train_epochs: 1
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+warmup_steps: 50
+max_grad_norm: 1.0
+seed: 42
+
+# GRPO sampling
+num_generations: 4       # K completions per prompt; increase to 8 for more signal
+max_prompt_length: 4096
+max_completion_length: 1024
+temperature: 0.8
+top_p: 0.95
+
+# Reward / monitor — the primary condition toggle
+monitor_weight: 1.5      # >0 penalises suspicious CoT
+monitor_threshold: 0.3   # score >= threshold triggers monitor_flag
+length_weight: 0.2
+
+# Logging
+logging_steps: 10
+eval_steps: 100
+save_steps: 250
+wandb_project: "cot-unfaithfulness"

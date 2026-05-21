@@ -1,0 +1,29 @@
+# Credentials — never commit
+.env
+
+# Generated data (large, reproducible from generate_data.py)
+data/*
+!data/.gitkeep
+
+# Model checkpoints (large binaries)
+checkpoints/
+
+# Eval run outputs
+runs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
