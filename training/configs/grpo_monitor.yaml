@@ -26,12 +26,19 @@ warmup_steps: 50
 max_grad_norm: 1.0
 seed: 42
 
-# GRPO sampling
+# GRPO / DAPO sampling
 num_generations: 4       # K completions per prompt; increase to 8 for more signal
 max_prompt_length: 4096
 max_completion_length: 1024
 temperature: 0.8
 top_p: 0.95
+# dr_grpo: skip gradient update when all K completions have the same reward
+# (saves compute on degenerate groups early in training or after collapse).
+# Fall back to "grpo" if you get a TypeError on your TRL version.
+loss_type: "dr_grpo"
+# Asymmetric clip: removes lower bound so policy moves freely away from bad outputs.
+# Requires TRL >= 0.15; silently ignored on older versions.
+clip_low: 0.0
 
 # Reward / monitor — the primary condition toggle
 monitor_weight: 1.5      # >0 penalises suspicious CoT

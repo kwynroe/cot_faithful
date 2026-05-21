@@ -1,0 +1,49 @@
+# Debug config: Qwen3-4B, small data, short run.
+# Use this to verify the pipeline works end-to-end before committing to a
+# full 8B run. Typical wall-clock: ~20-40 min on a single A100.
+
+model_name: "Qwen/Qwen3-4B"
+run_name: "grpo_debug"
+output_dir: "checkpoints/grpo_debug"
+
+# Data — small slice for fast iteration
+train_data: "data/train.jsonl"
+val_data: "data/val.jsonl"
+max_train_examples: 200
+
+# LoRA — smaller rank for faster debug
+lora_rank: 8
+lora_alpha: 16
+lora_dropout: 0.05
+use_4bit: false
+
+# Training — fewer steps, smaller batch
+learning_rate: 1.0e-5
+num_train_epochs: 1
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8
+warmup_steps: 10
+max_grad_norm: 1.0
+seed: 42
+
+# GRPO / DAPO sampling — reduced for speed
+num_generations: 4
+max_prompt_length: 2048
+max_completion_length: 512
+temperature: 0.8
+top_p: 0.95
+loss_type: "dr_grpo"
+clip_low: 0.0
+
+# Reward — no monitor for debug (just check reward signal is live)
+monitor_weight: 0.0
+monitor_threshold: 0.3
+length_weight: 0.2
+use_llm_judge_monitor: false
+llm_judge_model: "claude-haiku-4-5-20251001"
+
+# Logging — frequent so you can catch issues fast
+logging_steps: 5
+eval_steps: 50
+save_steps: 100
+wandb_project: "cot-unfaithfulness"

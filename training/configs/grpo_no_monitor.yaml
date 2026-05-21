@@ -28,12 +28,14 @@ warmup_steps: 50
 max_grad_norm: 1.0
 seed: 42
 
-# GRPO sampling
+# GRPO / DAPO sampling
 num_generations: 4
 max_prompt_length: 4096
 max_completion_length: 1024
 temperature: 0.8
 top_p: 0.95
+loss_type: "dr_grpo"
+clip_low: 0.0
 
 # Reward / monitor — set to 0 for this condition
 monitor_weight: 0.0      # no CoT penalty

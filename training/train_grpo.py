@@ -67,6 +67,17 @@ class GRPOConfig:
     temperature: float = 0.8
     top_p: float = 0.95
 
+    # DAPO-style training improvements (from arxiv 2503.14476)
+    # loss_type="dr_grpo": skips gradient updates for groups where all K
+    #   completions receive the same reward (dead compute early in training
+    #   when format isn't learned, or when the model collapses to one strategy).
+    #   Requires TRL >= 0.12. Fall back to "grpo" if you get a TypeError.
+    # clip_low=0.0: asymmetric clipping — removes the lower clip bound so the
+    #   policy can move freely away from bad completions. Requires TRL >= 0.15.
+    #   Gracefully ignored on older TRL versions.
+    loss_type: str = "dr_grpo"
+    clip_low: float = 0.0
+
     # Reward / monitor — the primary condition toggle
     # Set monitor_weight=0.0 for the no-monitor ablation condition.
     monitor_weight: float = 1.5
@@ -179,7 +190,7 @@ def main():
 
     reward_fn = make_reward_fn(reward_config, llm_judge=llm_judge)
 
-    trl_cfg = TRLGRPOConfig(
+    trl_kwargs = dict(
         output_dir=cfg.output_dir,
         run_name=cfg.run_name,
         # Training
@@ -190,21 +201,33 @@ def main():
         warmup_steps=cfg.warmup_steps,
         max_grad_norm=cfg.max_grad_norm,
         seed=cfg.seed,
-        # GRPO sampling
+        # GRPO / DAPO sampling
         num_generations=cfg.num_generations,
         max_prompt_length=cfg.max_prompt_length,
         max_completion_length=cfg.max_completion_length,
         temperature=cfg.temperature,
         top_p=cfg.top_p,
+        loss_type=cfg.loss_type,
         # Logging / checkpointing
         logging_steps=cfg.logging_steps,
         eval_steps=cfg.eval_steps,
         save_steps=cfg.save_steps,
-        report_to="wandb",
+        report_to="wandb" if creds.wandb_enabled() else "none",
         # Precision
         bf16=torch.cuda.is_bf16_supported(),
         fp16=not torch.cuda.is_bf16_supported(),
     )
+
+    # Asymmetric clipping (DAPO): epsilon_low added in TRL >= 0.15.
+    # Try passing it; silently skip on older versions rather than crashing.
+    import inspect
+    if "epsilon_low" in inspect.signature(TRLGRPOConfig).parameters:
+        trl_kwargs["epsilon_low"] = cfg.clip_low
+    else:
+        print(f"Note: TRL version does not support epsilon_low; "
+              f"symmetric clipping will be used (upgrade to TRL>=0.15 for asymmetric).")
+
+    trl_cfg = TRLGRPOConfig(**trl_kwargs)
 
     trainer = GRPOTrainer(
         model=model,
