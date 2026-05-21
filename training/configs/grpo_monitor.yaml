@@ -29,7 +29,7 @@ seed: 42
 # GRPO / DAPO sampling
 num_generations: 4       # K completions per prompt; increase to 8 for more signal
 max_prompt_length: 4096
-max_completion_length: 1024
+max_completion_length: 2048
 temperature: 0.8
 top_p: 0.95
 # dr_grpo: skip gradient update when all K completions have the same reward

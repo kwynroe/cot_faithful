@@ -29,7 +29,8 @@ from scorer.parser import parse_completion, ParsedCompletion
 from scorer.monitor import score_cot, MonitorResult
 
 
-MAX_THINK_TOKENS_APPROX = 600   # ~600 words before length penalty kicks in
+MAX_THINK_TOKENS_APPROX = 1200  # ~1200 words before length penalty kicks in
+                                 # (set generous relative to max_completion_length=2048)
 WORDS_PER_TOKEN = 0.75
 
 

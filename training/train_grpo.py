@@ -63,7 +63,7 @@ class GRPOConfig:
     # GRPO sampling
     num_generations: int = 4            # K completions per prompt
     max_prompt_length: int = 4096       # tokens
-    max_completion_length: int = 1024   # tokens
+    max_completion_length: int = 2048   # tokens — needs headroom for full think + report
     temperature: float = 0.8
     top_p: float = 0.95
 
